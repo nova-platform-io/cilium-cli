@@ -202,27 +202,29 @@ func (a *Action) Run(f func(*Action)) {
 		}
 	}
 
+	defer func() {
+		// Print flow buffer if any failures or warnings occurred.
+		// TODO(timo): printFlows is a misnomer, this function actually prints
+		// the verdict annotated over the list of flows.
+		if a.test.ctx.PrintFlows() || a.failed {
+			a.printFlows(a.Source())
+			a.printFlows(a.Destination())
+		}
+		if a.failed {
+			if a.test.ctx.params.PauseOnFail {
+				a.Log("Pausing after action failure, press the Enter key to continue:")
+				fmt.Scanln()
+			}
+
+			if a.test.ctx.params.CollectSysdumpOnFailure {
+				a.test.collectSysdump()
+			}
+		}
+	}()
+
 	// Execute the given test function.
 	// Might call Fatal().
 	f(a)
-
-	// Print flow buffer if any failures or warnings occurred.
-	// TODO(timo): printFlows is a misnomer, this function actually prints
-	// the verdict annotated over the list of flows.
-	if a.test.ctx.PrintFlows() || a.failed {
-		a.printFlows(a.Source())
-		a.printFlows(a.Destination())
-	}
-	if a.failed {
-		if a.test.ctx.params.PauseOnFail {
-			a.Log("Pausing after action failure, press the Enter key to continue:")
-			fmt.Scanln()
-		}
-
-		if a.test.ctx.params.CollectSysdumpOnFailure {
-			a.test.collectSysdump()
-		}
-	}
 }
 
 // collectMetricsPerSource retrieves metrics for the given source.
